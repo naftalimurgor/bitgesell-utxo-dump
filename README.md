@@ -1,0 +1,212 @@
+# Bitgesell UTXO Dump
+
+**Warning:** This tool may corrupt your chainstate database. If it does, you will need to run `bitcoind -reindex-chainstate` the next time you run bitcoin, and this usually takes around a day to complete. It's not a terrible problem, but it can be annoying. I'm not entirely sure why it happens, so if you can figure out how to fix it, that would be cool.
+
+You can get around this issue by first copying the chainstate database to an alternate location and then run `bitgesell-utxo-dump` pointing to this alternate location. Here's a example:
+
+```bash
+# 0. stop Bitgesell daemon
+BGL-cli stop
+
+# 1. copy the chaninstate data to an alternative location
+rsync --delete -av ~/.BGL/chainstate/ ~/BGL-chainstate-clone/
+
+# 2. now run the bitgesell-utxo-dump pointing to this alternate location
+bitgesell-utxo-dump -db ~/BGL-chainstate-clone/
+```
+
+-----
+
+![](assets/bitgesell-utxo-dump.gif)
+
+Get a **list of every unspent BGLs** in the blockchain.
+
+The program iterates over each entry in Bitcoin Core's `chainstate` [LevelDB](http://leveldb.org/) database. It decompresses and decodes the data, and produces a human-readable text dump of all the [UTXO](http://learnmeabitcoin.com/glossary/utxo)s (unspent transaction outputs).
+
+### Example CSV Results:
+
+```
+count,txid,vout,amount,type,address
+1,033e83e3204b0cc28724e147f6fd140529b2537249f9c61c9de9972750030000,0,65279,p2pkh,1KaPHfvVWNZADup3Yc26SfVdkTDvvHySVX
+2,e1c9467a885a156e56a29d9c854e65674d581ad75611b02290454b4862060000,1,9466355,p2pkh,1LpCmEejWLNfZigApMPwUY9nZTS8NTJCNS
+3,a1f28c43f1f3d4821d0db42707737ea90616613099234f905dfc6ae2b4060000,1,339500,p2pkh,1FuphZ7xVPGrxthQT1S8X7nNQNByYxAT3V
+4,818f5b9e3ede69da765d4c24684e813057c9b1f059e098661369b0a2ee060000,0,300000,p2pkh,18Y9yhjU9g2jjJmvaUy7TmUNZH9iPzQ4dd
+5,d2f5e439152d076593a145581f8d76ea2e48ed155285b9a245cd42dd06070000,0,100000,p2pkh,1EKHTvovYWHfUJ6i9vsoidyTPQauCPH1qC
+6,ea0c69fbd2389556b01771948ffc0507cf303bdc5a1b91b31acf9ecf6a070000,1,27668,p2pkh,1fkEhLpPKdmKtaxKdp4yDp1c87dF7GDub
+7,05eafead65250a24b1592f8a006cbeab16a7b17ed2616507c5e0bd67bd070000,1,32000,p2pkh,15KmfJcGNfL29vpsSJ37uPzTQfr8Qe17Gq
+8,2c0c985d384160d8c50c438bc67e639fe6047a7f2bac00a1238ca6a6d3070000,0,41936,p2pkh,17up1oPxBMTfZdehzy4v81KzLRHGDNX8ff
+9,8261170b7ae26be70bd9e8f0e4bf19ce3571bb6464cdf9e478c471d372080000,1,4528208,p2pkh,1P6Ae7unrSjtx9J5SjWuwAdZBoWcbcjzBZ
+...
+```
+
+## Setting up
+
+1. Install LevelDB:
+
+```
+sudo apt install libleveldb-dev
+```
+2. Set up a Bitgesell Node as you would need a full copy of the Blockchain
+```
+wget wget https://github.com/BitgesellOfficial/bitgesell/releases/download/0.1.9/bitgesell_0.1.9_amd64.deb
+wget http://ports.ubuntu.com/pool/main/p/perl/perl-modules-5.30_5.30.0-9build1_all.deb
+dpkg -i perl-modules-5.30_5.30.0-9build1_all.deb
+dpkg -i bitgesell_0.1.9_amd64.deb 
+```
+
+After that, if you have [Go](https://golang.org/) installed you can do:
+
+```
+go install github.com/naftalimurgor/bitgesell-utxo-dump@latest
+```
+
+This will create a binary called `bitgesell-utxo-dump`, which you can call from the command line:
+
+```
+$ bitgesell-utxo-dump
+```
+
+This will start dumping all of the UTXO database to a file called `utxodump.csv`.
+
+**NOTE:** This program reads the chainstate LevelDB database created by `BGLd`, so you will need to download and sync `BGLd` for this script to work. In other words, this script reads your own local copy of the blockchain.
+
+**NOTE:** LevelDB wasn't designed to be accessed by multiple programs at the same time, so make sure `BGLd` isn't running before you start (`BGL-cli stop` should do it).
+
+
+## Usage
+
+The basic command is:
+
+```
+$ bitgesell-utxo-dump
+```
+
+You can view the results in the terminal with the `-v` (verbose) flag (but this will make the script run about **3 times slower**):
+
+```
+$ bitgesell-utxo-dump -v
+```
+
+The results will be written to the file in the current directory called `utxodump.csv`. You can choose your own filename with the `-o` option:
+
+```
+$ bitgesell-utxo-dump -o ~/Desktop/utxodump.txt
+```
+
+If you know that the `chainstate` LevelDB folder is in a different location to the default (e.g. you want to get a UTXO dump of the _Testnet_ blockchain), use the `-db` option:
+
+```
+$ bitgesell-utxo-dump -db ~/.bitcoin/testnet3/chainstate/
+```
+
+By default this script does not convert the public keys inside P2PK locking scripts to addresses (because technically they do not have an address). However, sometimes it may be useful to get addresses for them anyway for use with other APIs, so the following option allows you to return the "address" for UTXOs with P2PK locking scripts:
+
+```
+$ bitgesell-utxo-dump -p2pkaddresses
+```
+
+You can select what data the script outputs from the chainstate database with the `-f` (fields) option. This is useful if you know what data you need and want to _reduce the size of the results file_.
+
+```
+$ bitgesell-utxo-dump -f count,txid,vout,address
+$ bitgesell-utxo-dump -f count,txid,vout,height,coinbase,amount,script,type,address # all possible fields
+```
+
+* **count** - The count of the number of UTXOs in the database.
+* **txid** - [Transaction ID](http://learnmeabitcoin.com/glossary/txid) for the output.
+* **vout** - The index number of the transaction output (which output in the transaction is it?).
+* **height** - The height of the block the transaction was mined in.
+* **coinbase** - Whether the output is from a coinbase transaction (i.e. claiming a block reward).
+* **amount** - The value of the output in _satoshis_.
+* **script** - Details about the locking script placed on the output. For a P2PKH this is the hash160 of the compressed public key. For a P2PK script this a compressed public key (sometimes with a [prefix](https://github.com/in3rsha/bitcoin-chainstate-parser#3-third-varint) to indicate that the original script contained an uncompressed public key). For a P2SH script this is the hash160 of the script. For everything else it's the complete scriptpubkey.
+* **type** - The type of locking script (e.g. P2PK, P2PKH, P2SH, P2MS, P2WPKH, P2WSH, or non-standard)
+* **address** - The address the output is locked to (this is generally just the locking script in a shorter format with user-friendly characters).
+
+
+All other options can be found with `-h`:
+
+```
+$ bitgesell-utxo-dump -h
+```
+
+## FAQ
+
+### How long does this script take to run?
+
+It takes me about **20 minutes** to get all the UTXOs.
+
+This obviously this depends on how big the UTXO database is and how fast your computer is. For me, the UTXO database had 52 million entries, and I'm using a Thinkpad X220 (with a SSD).
+
+Either way, I'd probably make a cup of tea after it starts running.
+
+### How big is the file?
+
+The file should be around **7GB** (roughly **2.5 times the size** of the LevelDB database: `du -h ~/.bitcoin/chainstate/`).
+
+Again, this depends on how many entries are in the UTXO database, but it also depends what _fields_ you choose to have in the results:
+
+```
+$ bitgesell-utxo-dump -f address # small file
+$ bitgesell-utxo-dump -f count,txid,vout,amount,type,address # bigger file
+$ bitgesell-utxo-dump -f count,txid,vout,height,coinbase,amount,nsize,script,type,address # biggest file
+```
+
+### How does this program work?
+
+This program just iterates through all the entries in the LevelDB database at `~/.bitcoin/chainstate`.
+
+However, the data inside `~/.bitcoin/chainstate` has been _obfuscated_ (to prevent triggering anti-virus software) and _compressed_ (to reduce the size on disk), so it's far from being human-readable. This script just deobfuscates each entry and decodes/decompresses the data to get human-readable data for each UTXO in the database.
+
+![](assets/bitgesell-utxo-dump.png)
+
+### Can I parse the chainstate LevelDB myself?
+
+Sure. Most programming languages seem to have libraries for reading a LevelDB database.
+
+* [Go](https://github.com/syndtr/goleveldb)
+* [Ruby](https://github.com/wmorgan/leveldb-ruby)
+* [Python](https://github.com/wbolster/plyvel)
+
+The trickier part is decoding the data for each UTXO in the database:
+
+```
+       type                          txid (little-endian)                      index (varint)
+           \                               |                                  /
+           <><--------------------------------------------------------------><>
+    key:   430000155b9869d56c66d9e86e3c01de38e3892a42b99949fe109ac034fff6583900
+
+    value: 71a9e87d62de25953e189f706bcf59263f15de1bf6c893bda9b045 <- obfuscated
+           b12dcefd8f872536b12dcefd8f872536b12dcefd8f872536b12dce <- extended obfuscateKey
+           c0842680ed5900a38f35518de4487c108e3810e6794fb68b189d8b <- deobfuscated (XOR)
+           <----><----><><-------------------------------------->
+            /      |    \                   |
+       varint   varint   varint          script <- P2PKH/P2SH hash160, P2PK public key, or complete script
+          |        |     nSize
+          |        |
+          |     amount (compressesed)
+          |
+          |
+   100000100001010100110
+   <------------------> \
+          height         coinbase
+```
+
+## Thanks
+
+ * This script was inspired by the [bitcoin_tools](https://github.com/sr-gi/bitcoin_tools) repo made by [Sergi Delgado Segura](https://github.com/sr-gi). I wanted to see if I could get a faster dump of the UTXO database by writing the program in Go, in addition to getting the **addresses** for each of the UTXOs. The decoding and decompressing code in his repo helped me to write this tool.
+
+### Similar Tools
+
+ * [github.com/sr-gi/bitcoin_tools](https://github.com/sr-gi/bitcoin_tools)
+ * [github.com/in3rsha/bitcoin-chainstate-parser](https://github.com/in3rsha/bitcoin-chainstate-parser)
+ * [github.com/mycroft/chainstate](https://github.com/mycroft/chainstate)
+ * [laanwj (unfinished)](https://github.com/bitcoin/bitcoin/pull/7759)
+
+### Links
+
+ * <https://github.com/syndtr/goleveldb>
+ * <https://github.com/bitcoin/bitcoin/blob/master/src/compressor.cpp>
+ * <https://bitcoin.stackexchange.com/questions/51387/how-does-bitcoin-read-from-write-to-leveldb/52167#52167>
+ * <https://bitcoin.stackexchange.com/questions/52257/chainstate-leveldb-corruption-after-reading-from-the-database>
+ * <https://bitcoin.stackexchange.com/questions/85710/does-the-chainstate-leveldb-only-contain-addresses-for-p2pkh-and-p2sh>
+ * <https://github.com/bitcoin/bitcoin/issues/14584>
