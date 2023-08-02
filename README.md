@@ -3,7 +3,7 @@
 
 A Commandline Utility to parse LevelDB state and output UTXO for Bitgesell Blockchain Network.
 
-**Warning:** This tool may corrupt your chainstate database. If it does, you will need to run `BGLd -reindex-chainstate` the next time you run bitcoin, and this usually takes around a day to complete. It's not a terrible problem, but it can be annoying. I'm not entirely sure why it happens, so if you can figure out how to fix it, that would be cool.
+**Warning:** This tool may corrupt your chainstate database. If it does, you will need to run `BGLd -reindex-chainstate` the next time you run bitgesesell node, and this usually takes around a day to complete. It's not a terrible problem, but it can be annoying. I'm not entirely sure why it happens, so if you can figure out how to fix it, that would be cool.
 
 You can get around this issue by first copying the chainstate database to an alternate location and then run `bitgesell-utxo-dump` pointing to this alternate location. Here's a example:
 
@@ -60,10 +60,10 @@ dpkg -i bitgesell_0.1.9_amd64.deb
 After that, if you have [Go](https://golang.org/) installed you can do:
 
 ```
-go install github.com/naftalimurgor/bitgesell-utxo-dump@latest
+go install github.com/naftalimurgor/bgl-utxo-dump@latest
 ```
 
-This will create a binary called `bitgesell-utxo-dump`, which you can call from the command line:
+This will create a binary called `bgl-utxo-dump`, which you can call from the command line:
 
 ```
 $ bitgesell-utxo-dump
@@ -99,7 +99,7 @@ $ bitgesell-utxo-dump -o ~/Desktop/utxodump.txt
 If you know that the `chainstate` LevelDB folder is in a different location to the default (e.g. you want to get a UTXO dump of the _Testnet_ blockchain), use the `-db` option:
 
 ```
-$ bitgesell-utxo-dump -db ~/.bitcoin/testnet3/chainstate/
+$ bitgesell-utxo-dump -db ~/.BGL/testnet3/chainstate/
 ```
 
 By default this script does not convert the public keys inside P2PK locking scripts to addresses (because technically they do not have an address). However, sometimes it may be useful to get addresses for them anyway for use with other APIs, so the following option allows you to return the "address" for UTXOs with P2PK locking scripts:
@@ -144,7 +144,7 @@ Either way, I'd probably make a cup of tea after it starts running.
 
 ### How big is the file?
 
-The file should be around **7GB** (roughly **2.5 times the size** of the LevelDB database: `du -h ~/.bitcoin/chainstate/`).
+The file should be around **7GB** (roughly **2.5 times the size** of the LevelDB database: `du -h ~/.BGL/chainstate/`).
 
 Again, this depends on how many entries are in the UTXO database, but it also depends what _fields_ you choose to have in the results:
 
@@ -154,11 +154,11 @@ $ bitgesell-utxo-dump -f count,txid,vout,amount,type,address # bigger file
 $ bitgesell-utxo-dump -f count,txid,vout,height,coinbase,amount,nsize,script,type,address # biggest file
 ```
 
-### How does this program work?
+### Getting started
 
-This program just iterates through all the entries in the LevelDB database at `~/.bitcoin/chainstate`.
+This program just iterates through all the entries in the LevelDB database at `~/.BGL/chainstate`.
 
-However, the data inside `~/.bitcoin/chainstate` has been _obfuscated_ (to prevent triggering anti-virus software) and _compressed_ (to reduce the size on disk), so it's far from being human-readable. This script just deobfuscates each entry and decodes/decompresses the data to get human-readable data for each UTXO in the database.
+However, the data inside `~/.BGL/chainstate` has been _obfuscated_ (to prevent triggering anti-virus software) and _compressed_ (to reduce the size on disk), so it's far from being human-readable. This script just deobfuscates each entry and decodes/decompresses the data to get human-readable data for each UTXO in the database.
 
 ![](assets/bitgesell-utxo-dump.png)
 
